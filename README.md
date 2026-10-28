@@ -70,5 +70,3 @@ MIT — use it, extend it, keep the credit line.
  
 ---
  
-*Designed by Nver — first drone payload, built with AI tooling, tested in MuJoCo
-before handing to Isaac Sim.*
