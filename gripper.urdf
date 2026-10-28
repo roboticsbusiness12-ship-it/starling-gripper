@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!-- Starling 2 Max (official CAD mesh) + parallel-jaw gripper.
+     Units: metres, kg. Z up. Body floor at z=0, legs reach z=-0.0676.
+     Meshes are in mm -> scale 0.001. Collisions are primitives (fast + stable);
+     Isaac Sim can also auto-generate convex hulls from the visuals. -->
+<robot name="starling_gripper">
+  <mujoco><compiler discardvisual="false" fusestatic="false"/></mujoco>
+
+  <!-- ===== drone body: real Starling 2 Max visual, box collisions ===== -->
+  <link name="drone_body">
+    <inertial><mass value="0.566"/><origin xyz="0 0 0.02"/><inertia ixx="0.006" iyy="0.006" izz="0.01" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0"/><geometry><mesh filename="meshes/starling.stl" scale="0.001 0.001 0.001"/></geometry></visual>
+    <!-- collision proxies: central body + 4 legs (match landing behaviour) -->
+    <collision><origin xyz="0 0 0.03"/><geometry><box size="0.12 0.10 0.06"/></geometry></collision>
+    <collision><origin xyz="0.125 0.092 -0.0338"/><geometry><box size="0.029 0.022 0.0676"/></geometry></collision>
+    <collision><origin xyz="-0.125 0.092 -0.0338"/><geometry><box size="0.029 0.022 0.0676"/></geometry></collision>
+    <collision><origin xyz="0.125 -0.092 -0.0338"/><geometry><box size="0.029 0.022 0.0676"/></geometry></collision>
+    <collision><origin xyz="-0.125 -0.092 -0.0338"/><geometry><box size="0.029 0.022 0.0676"/></geometry></collision>
+    <!-- forward camera (green) -->
+    <visual><origin xyz="0 0.052 0.0"/><geometry><mesh filename="meshes/camera_block.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="green"><color rgba="0.2 0.9 0.2 1"/></material></visual>
+  </link>
+
+  <!-- ===== adapter plate 95x80x3 ===== -->
+  <link name="adapter_plate">
+    <inertial><mass value="0.02"/><inertia ixx="1e-5" iyy="1e-5" izz="2e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><mesh filename="meshes/adapter_plate.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="blue"><color rgba="0.27 0.5 0.75 1"/></material></visual>
+    <collision><geometry><box size="0.095 0.080 0.003"/></geometry></collision>
+  </link>
+  <joint name="plate_mount" type="fixed">
+    <parent link="drone_body"/><child link="adapter_plate"/><origin xyz="0 0 -0.0175"/>
+  </joint>
+
+  <!-- ===== gripper frame: hinge on plate, stow axis = X, 0 = down, ~90 deg = folded ===== -->
+  <link name="gripper_frame">
+    <inertial><mass value="0.06"/><origin xyz="0 0 -0.02"/><inertia ixx="2e-5" iyy="2e-5" izz="2e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><mesh filename="meshes/gripper_frame.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="red"><color rgba="0.95 0.33 0.2 1"/></material></visual>
+    <collision><origin xyz="0 0 -0.02"/><geometry><box size="0.070 0.050 0.040"/></geometry></collision>
+    <!-- servos + pinions (visual) -->
+    <visual><origin xyz="0.0312 0 -0.02925"/><geometry><mesh filename="meshes/servo_mg90s.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="white"><color rgba="1 1 1 1"/></material></visual>
+    <visual><origin xyz="-0.0312 0 -0.02925"/><geometry><mesh filename="meshes/servo_mg90s.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="white"/></visual>
+    <visual><origin xyz="0.026 0 -0.019"/><geometry><mesh filename="meshes/pinion.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="silver"><color rgba="0.75 0.75 0.75 1"/></material></visual>
+    <visual><origin xyz="-0.026 0 -0.019" rpy="0 3.14159 0"/><geometry><mesh filename="meshes/pinion.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="silver"/></visual>
+    <!-- down-facing camera on front face of body -->
+    <visual><origin xyz="0 0.0295 -0.03"/><geometry><mesh filename="meshes/camera_block.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="green"/></visual>
+  </link>
+  <joint name="stow" type="revolute">
+    <parent link="adapter_plate"/><child link="gripper_frame"/>
+    <origin xyz="0 0 -0.0015"/><axis xyz="-1 0 0"/>
+    <limit lower="0" upper="1.6" effort="3" velocity="3"/>
+  </joint>
+
+  <!-- ===== parallel-jaw fingers: slide along X, value = distance from centre (m) ===== -->
+  <link name="finger_left">
+    <inertial><mass value="0.012"/><origin xyz="0 0 -0.045"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-6" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><mesh filename="meshes/finger_left.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="black"><color rgba="0.08 0.08 0.08 1"/></material></visual>
+    <visual><geometry><mesh filename="meshes/pad_left.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="pad"><color rgba="0.3 0.3 0.3 1"/></material></visual>
+    <collision><origin xyz="0.002 -0.0 -0.045"/><geometry><box size="0.007 0.040 0.090"/></geometry></collision>
+  </link>
+  <joint name="servo_left" type="prismatic">
+    <parent link="gripper_frame"/><child link="finger_left"/>
+    <origin xyz="0 0 -0.044"/><axis xyz="-1 0 0"/>
+    <limit lower="0.015" upper="0.060" effort="20" velocity="0.2"/>
+  </joint>
+
+  <link name="finger_right">
+    <inertial><mass value="0.012"/><origin xyz="0 0 -0.045"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-6" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><mesh filename="meshes/finger_right.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="black"/></visual>
+    <visual><geometry><mesh filename="meshes/pad_right.stl" scale="0.001 0.001 0.001"/></geometry>
+      <material name="pad"/></visual>
+    <collision><origin xyz="-0.002 0 -0.045"/><geometry><box size="0.007 0.040 0.090"/></geometry></collision>
+  </link>
+  <joint name="servo_right" type="prismatic">
+    <parent link="gripper_frame"/><child link="finger_right"/>
+    <origin xyz="0 0 -0.044"/><axis xyz="1 0 0"/>
+    <limit lower="0.015" upper="0.060" effort="20" velocity="0.2"/>
+  </joint>
+</robot>
