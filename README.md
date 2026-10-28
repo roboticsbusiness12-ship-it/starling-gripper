@@ -1,49 +1,74 @@
 # Starling 2 Max + Parallel-Jaw Gripper — Isaac Sim Asset
-
-**Author:** Nver | **For:** AirVLA-style pick-and-place in Isaac Sim / OmniDrones
-
-## Contents
-
+ 
+Articulated URDF model of the **ModalAI Starling 2 Max** carrying an underbelly
+**parallel-jaw gripper** with a fold-up (stow) joint — built for AirVLA-style
+aerial pick-and-place in **Isaac Sim / OmniDrones**.
+ 
+## What's inside
+ 
 ```
-gripper.urdf          full articulated model (Starling body + gripper)
+gripper.urdf          articulated model: drone body + plate + hinged frame + 2 sliding jaws
 meshes/
-  starling.stl        official Starling 2 Max CAD (200k faces, Y-up->Z-up fixed)
-  adapter_plate.stl   95x80x3 mm mount plate (4x M3 holes at +-32,+-32)
-  gripper_frame.stl   gripper body 70x50x40, servo pockets, hinge barrel
-  finger_left/right.stl   sliding jaws (V-groove + pad recess, 6 deg inward tip)
-  pad_left/right.stl      soft pads (2 mm)
-  servo_mg90s.stl / pinion.stl / camera_block.stl   visual placeholders
-  gripper_assembly.step   deployed-pose assembly reference (CAD)
-  *.step              per-part CAD for editing in Fusion/FreeCAD
-README.md             this file
+  starling.stl            official Starling 2 Max CAD, decimated to 200k faces (Y-up→Z-up)
+  adapter_plate.stl/step  95×80×3 mm mount plate, 4× M3 holes, centre window, hinge ears
+  gripper_frame.stl/step  70×50×40 mm body, MG90S servo pockets, hinge barrel, rail slot
+  finger_*/pad_*.stl/step sliding jaws — 2 mm pad recess, V-groove, 6° inward tips
+  servo_mg90s / pinion / camera_block  visual placeholders
+  gripper_assembly.step   core assembly (deployed pose)
+  gripper_full.step       all 10 parts, separate bodies (open in Fusion/SolidWorks)
+CALCS.md              mass budget, grip-force and servo sizing, controller notes
 ```
-
-## Coordinate frame & units
-- Z-up, metres in URDF. Meshes are mm (URDF `scale="0.001"`).
-- Drone body floor = z 0; landing-leg tips reach z = -0.0676 m.
-- Mass: 0.67 kg total (0.566 drone + 0.104 gripper). Inertias are estimates — see CALCS.md.
-
-## Joints (drivable)
+ 
+## Coordinates & units
+ 
+- **Z-up, SI units** in the URDF; meshes are authored in mm (`scale="0.001"`).
+- Drone body floor at `z=0`; landing-leg tips at `z=-0.0676` m.
+- Total mass **0.67 kg** (0.566 airframe + 0.104 gripper). Inertias are box
+  approximations — refine before precise controller work.
+ 
+## Joints (the three drives Grik's controller commands)
+ 
 | Joint | Type | Axis | Range | Meaning |
 |-------|------|------|-------|---------|
-| `stow` | revolute | -X | 0 .. 1.6 rad | 0 = deployed (hangs down), ~1.55 = folded under belly for landing |
-| `servo_left` | prismatic | -X | 0.015 .. 0.060 m | jaw offset from centre |
-| `servo_right` | prismatic | +X | 0.015 .. 0.060 m | jaw offset from centre |
-
-Jaw gap = 2 x joint value, so 30-120 mm opening. A 40 mm object is grasped at ~0.020.
-
-## Cameras (visual meshes — add Isaac `Camera` prims at these locations)
-- Forward: `drone_body` frame, `xyz 0 0.052 0`, lens faces +Y.
-- Downward: `gripper_frame` front face, `xyz 0 0.0295 -0.03`, faces +Y/down.
-
-## Importing into Isaac Sim
-1. File > Import > select `gripper.urdf`.
-2. Options: `collision_from_visuals` OFF (primitive collision proxies are already defined — the real Starling STL is visual only, legs/body have box colliders). Enable *Allow Self-Collision* OFF is fine.
-3. Output USD can then be referenced by OmniDrones with a `.yaml` drone config.
-
+| `stow` | revolute | −X | 0 → 1.6 rad | 0 = deployed below belly · ~1.55 = folded for landing |
+| `servo_left` | prismatic | −X | 0.015 → 0.060 m | jaw offset from centre |
+| `servo_right` | prismatic | +X | 0.015 → 0.060 m | jaw offset from centre |
+ 
+Jaw gap = 2 × joint value → 30–120 mm opening; a 40 mm object is held at ≈0.020.
+ 
+## Cameras
+ 
+Place Isaac `Camera` prims at the green placeholder meshes:
+ 
+- **Forward:** `drone_body` frame, `xyz 0 0.052 0`, looks +Y
+- **Downward:** `gripper_frame`, `xyz 0 0.0295 -0.03`, looks +Y/down (grasp view)
+ 
+## Import into Isaac Sim
+ 
+1. **File → Import →** select `gripper.urdf`.
+2. Leave *collision from visuals* **off** — primitive colliders are included
+   (body box + 4 legs); the dense Starling mesh is visual-only.
+3. Save as USD and reference from an OmniDrones `.yaml` drone config.
+ 
+## Validated
+ 
+- Loads clean in **MuJoCo 3.17** — 6 links, all 3 joints within limits.
+- Full mission script (deploy → grasp → carry → release → stow → land) ran
+  end-to-end on this model before mesh swap; see `CALCS.md`.
+ 
 ## Known limitations (honest)
-- Starling mesh is **decimated to 200k faces** — good for sim, not a manufacturing file. Original STEP remains the CAD source.
-- Mounting hole pattern (+-32,+-32) is our best reading of the STEP's clamp blocks; verify against the physical mounts before real hardware.
-- Inertia tensors are box approximations. Gripper link masses are estimates (PLA + MG90S).
-- Propellers/rotors are part of the static visual mesh — spin them via OmniDrones' own rotor visuals or leave static; thrust comes from the controller, not the mesh.
-- Flight dynamics come from OmniDrones/PX4-sim on your side; this package is the geometry + articulation + masses.
+ 
+- Starling mesh is a **sim-visual decimation**, not a manufacturing file.
+- Mount-hole pattern (±32 mm) is best-effort from the official STEP — verify
+  against hardware before printing a real mount.
+- Inertia tensors and link masses are estimates.
+- Rotors are static visuals; propulsion is modelled by the controller, not the mesh.
+ 
+## License
+ 
+MIT — use it, extend it, keep the credit line.
+ 
+---
+ 
+*Designed by Nver — first drone payload, built with AI tooling, tested in MuJoCo
+before handing to Isaac Sim.*
